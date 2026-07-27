@@ -1,0 +1,3 @@
+include LICENSE
+include NOTICE
+recursive-include src/workday_ldq *.py py.typed

@@ -1,0 +1,52 @@
+Workday Live Data Query Python Client
+Copyright 2024-2026 Workday, Inc.
+
+This product is licensed under the Apache License 2.0.
+
+================================================================================
+
+This product includes software developed by third parties:
+
+--------------------------------------------------------------------------------
+Trino Python Client
+--------------------------------------------------------------------------------
+Copyright Trino Software Foundation
+Licensed under the Apache License 2.0
+https://trino.io/
+https://github.com/trinodb/trino-python-client
+
+This product uses the Trino Python client for SQL query execution against LDQ.
+
+--------------------------------------------------------------------------------
+PyJWT
+--------------------------------------------------------------------------------
+Copyright (c) 2015-2022 José Padilla
+Licensed under the MIT License
+https://github.com/jpadilla/pyjwt
+
+This product uses PyJWT for JSON Web Token (JWT) creation and validation.
+
+--------------------------------------------------------------------------------
+Requests
+--------------------------------------------------------------------------------
+Copyright Kenneth Reitz
+Licensed under the Apache License 2.0
+https://requests.readthedocs.io/
+https://github.com/psf/requests
+
+This product uses Requests for HTTP communication with OAuth token endpoints.
+
+--------------------------------------------------------------------------------
+cryptography
+--------------------------------------------------------------------------------
+Licensed under Apache-2.0 OR BSD-3-Clause
+https://cryptography.io/
+https://github.com/pyca/cryptography
+
+This product uses the cryptography library for TLS and cryptographic operations.
+
+================================================================================
+
+For the full text of the Apache License 2.0, see the LICENSE file included
+with this distribution or visit:
+https://www.apache.org/licenses/LICENSE-2.0
