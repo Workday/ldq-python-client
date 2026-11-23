@@ -20,7 +20,6 @@ from .constants import (
     TokenParam,
     AuthzParam,
     AuthzResponseType,
-    OAUTH_TOKEN_ENDPOINT_HEADERS,
     DEFAULT_CALLBACK_TIMEOUT_SECONDS,
 )
 
@@ -44,7 +43,7 @@ class AuthCodeGrantAuth(BaseAuth):
 
     CALLBACK_TIMEOUT_SECONDS = DEFAULT_CALLBACK_TIMEOUT_SECONDS  # 3 minutes
 
-    def get_new_access_token(self) -> str:
+    def get_new_access_token(self, trace_id: Optional[str] = None) -> str:
         """Run the full Authorization Code Grant flow and return a fresh access token."""
         state = secrets.token_urlsafe(16)
         auth_url = self._build_authorization_url(state)
@@ -76,7 +75,7 @@ class AuthCodeGrantAuth(BaseAuth):
             server.shutdown()
             server.server_close()
 
-        return self._exchange_code_for_token(code)
+        return self._exchange_code_for_token(code, trace_id)
 
     # ------------------------------------------------------------------
     # Helpers
@@ -91,7 +90,7 @@ class AuthCodeGrantAuth(BaseAuth):
         }
         return f"{self.config.authorization_endpoint}?{urlencode(params)}"
 
-    def _exchange_code_for_token(self, code: str) -> str:
+    def _exchange_code_for_token(self, code: str, trace_id: Optional[str] = None) -> str:
         resp = self._http_session.post(
             self.config.token_endpoint,
             data={
@@ -101,12 +100,12 @@ class AuthCodeGrantAuth(BaseAuth):
                 TokenRequestParam.CLIENT_ID: self.config.client_id,
                 TokenRequestParam.CLIENT_SECRET: self.config.client_secret,
             },
-            headers=OAUTH_TOKEN_ENDPOINT_HEADERS,
+            headers=self._token_request_headers(trace_id),
             timeout=self.HTTP_REQUEST_TIMEOUT_SECONDS,
         )
         return self._handle_token_response(resp)
 
-    def try_refresh_token_grant(self) -> Optional[str]:
+    def try_refresh_token_grant(self, trace_id: Optional[str] = None) -> Optional[str]:
         """
         Try to refresh access token using OAuth 2.0 Refresh Token Grant (RFC 6749 §6).
         Returns new access token on success, None on failure.
@@ -123,7 +122,7 @@ class AuthCodeGrantAuth(BaseAuth):
                     TokenRequestParam.CLIENT_ID: self.config.client_id,
                     TokenRequestParam.CLIENT_SECRET: self.config.client_secret,
                 },
-                headers=OAUTH_TOKEN_ENDPOINT_HEADERS,
+                headers=self._token_request_headers(trace_id),
                 timeout=self.HTTP_REQUEST_TIMEOUT_SECONDS,
             )
             return self._handle_token_response(resp)

@@ -377,7 +377,7 @@ class TestGetNewAccessToken:
 
         verifiers = []
 
-        def capture_exchange(code):
+        def capture_exchange(code, trace_id=None):
             verifiers.append(auth._code_verifier)
             auth._cached_token_data = CachedToken(access_token=access_token, expires_at=datetime.now(timezone.utc) + timedelta(hours=1))
             return access_token

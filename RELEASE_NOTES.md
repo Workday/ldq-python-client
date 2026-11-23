@@ -1,5 +1,20 @@
 # Release Notes - LDQ Python Client
 
+## Version 1.3.0
+
+### Added
+- Trace ID per query: every HTTP request of a query (submit, poll, cancel) carries the same ID in the `X-Trino-Trace-Token` and `x-wd-request-id` headers. OAuth token requests triggered by a query send the same `x-wd-request-id`.
+- `wd.traceId.enabled` — set to `false` to turn trace ID propagation off (default: `true`).
+
+## Version 1.2.1
+
+No public API changes.
+
+## Version 1.2.0
+
+### Added
+- `ACCESS_TOKEN` auth model (`wd.authn.accessToken`) for using a pre-issued token directly, without a token exchange.
+
 ## Version 1.1.2
 
 ### Added

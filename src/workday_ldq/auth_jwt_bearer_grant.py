@@ -14,7 +14,6 @@ from .constants import (
     TokenRequestParam,
     JWTAlgorithm,
     JWTClaim,
-    OAUTH_TOKEN_ENDPOINT_HEADERS,
 )
 
 
@@ -31,7 +30,7 @@ class JwtBearerAuth(BaseAuth):
     Note: JWT Bearer grant does not support refresh tokens.
     """
 
-    def get_new_access_token(self) -> str:
+    def get_new_access_token(self, trace_id: Optional[str] = None) -> str:
         now = int(time.time())
         payload = {
             JWTClaim.ISS: self.config.client_id,  # Issuer
@@ -49,11 +48,11 @@ class JwtBearerAuth(BaseAuth):
                 TokenRequestParam.GRANT_TYPE: GrantType.JWT_BEARER,
                 TokenRequestParam.ASSERTION: assertion,
             },
-            headers=OAUTH_TOKEN_ENDPOINT_HEADERS,
+            headers=self._token_request_headers(trace_id),
             timeout=self.HTTP_REQUEST_TIMEOUT_SECONDS,
         )
         return self._handle_token_response(resp)
 
-    def try_refresh_token_grant(self) -> Optional[str]:
+    def try_refresh_token_grant(self, trace_id: Optional[str] = None) -> Optional[str]:
         """JWT Bearer grant does not support refresh tokens."""
         return None

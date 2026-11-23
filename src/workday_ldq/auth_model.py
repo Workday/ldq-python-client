@@ -15,6 +15,7 @@ if TYPE_CHECKING:
 
 from .auth_code_grant import AuthCodeGrantAuth
 from .auth_code_pkce_grant import AuthCodeGrantPKCEAuth
+from .auth_access_token import AccessTokenAuth
 from .auth_jwt_bearer_grant import JwtBearerAuth
 from .callback_server import _validate_redirect_url
 from .driver_property import DriverProperty
@@ -27,6 +28,7 @@ _JWT_REQUIRED = [DriverProperty.TOKEN_ENDPOINT, DriverProperty.CLIENT_ID, Driver
 _AUTH_CODE_PKCE_REQUIRED = [DriverProperty.TOKEN_ENDPOINT, DriverProperty.CLIENT_ID,
                             DriverProperty.AUTHORIZATION_ENDPOINT, DriverProperty.REDIRECT_URL]
 _AUTH_CODE_REQUIRED = _AUTH_CODE_PKCE_REQUIRED + [DriverProperty.CLIENT_SECRET]
+_ACCESS_TOKEN_REQUIRED = [DriverProperty.ACCESS_TOKEN]
 
 
 # ---------------------------------------------------------------------------
@@ -58,6 +60,11 @@ def _validate_auth_code_base(cfg: LDQConfig) -> None:
     if missing:
         raise ValueError(f"Missing required properties for {cfg.auth_model.name}: {', '.join(missing)}")
     _validate_auth_code_endpoints(cfg)
+
+def _validate_access_token(cfg: LDQConfig) -> None:
+    missing = [prop for prop in cfg.auth_model.required_properties if not cfg.get(prop)]
+    if missing:
+        raise ValueError(f"Missing required properties for ACCESS_TOKEN: {', '.join(missing)}")
 
 
 # ---------------------------------------------------------------------------
@@ -95,9 +102,11 @@ class AuthModel(str, Enum):
     AUTHORIZATION_CODE = ("authorization_code", AuthCodeGrantAuth, _validate_auth_code_base, _AUTH_CODE_REQUIRED)
     AUTHORIZATION_CODE_PKCE = (
         "authorization_code_pkce", AuthCodeGrantPKCEAuth, _validate_auth_code_base, _AUTH_CODE_PKCE_REQUIRED)
+    ACCESS_TOKEN = ("access_token", AccessTokenAuth, _validate_access_token, _ACCESS_TOKEN_REQUIRED)
 
 
 # Convenient aliases
 JWT_BEARER = AuthModel.JWT_BEARER
 AUTHORIZATION_CODE = AuthModel.AUTHORIZATION_CODE
 AUTHORIZATION_CODE_PKCE = AuthModel.AUTHORIZATION_CODE_PKCE
+ACCESS_TOKEN = AuthModel.ACCESS_TOKEN

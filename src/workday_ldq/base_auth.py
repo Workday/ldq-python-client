@@ -23,8 +23,10 @@ from .constants import (
     DEFAULT_TOKEN_EXPIRATION_SECONDS,
     DEFAULT_HTTP_REQUEST_TIMEOUT_SECONDS,
     LDQ_GATEWAY_PATH_PREFIX,
+    OAUTH_TOKEN_ENDPOINT_HEADERS, HTTP_HEADERS,
 )
 from .http_client import create_oauth_http_session
+from .trace_id import TraceIdTracker
 
 logger = logging.getLogger(__name__)
 
@@ -53,9 +55,14 @@ class BaseAuth(Authentication, ABC):
         self._token_lock = threading.Lock()
         # This enables connection pooling and automatic retries across all OAuth token requests
         self._http_session = create_oauth_http_session()
+        # One trace ID per Trino query execution; None when wd.traceId.enabled=false
+        self._trace_tracker = TraceIdTracker() if config.trace_id_enabled else None
 
-    def get_token(self) -> str:
+    def get_token(self, trace_id: Optional[str] = None) -> str:
         """Return a valid access token, using refresh token when possible.
+
+        ``trace_id`` is the trace ID of the query that triggered the call, if any; it is sent
+        on token endpoint requests as ``x-wd-request-id``.
 
         Uses a lock to prevent concurrent refresh attempts (which could cause
         multiple browser popups in AuthCodeGrantAuth).
@@ -74,15 +81,15 @@ class BaseAuth(Authentication, ABC):
                     raise RuntimeError("Token validation passed but access_token is None")
                 return self._cached_token_data.access_token
             # Try refresh token first if available
-            refreshed = self.try_refresh_token_grant()
+            refreshed = self.try_refresh_token_grant(trace_id)
             if refreshed:
                 return refreshed
 
             # Fall back to full authentication flow
-            return self.get_new_access_token()
+            return self.get_new_access_token(trace_id)
 
     @abstractmethod
-    def try_refresh_token_grant(self) -> Optional[str]:
+    def try_refresh_token_grant(self, trace_id: Optional[str] = None) -> Optional[str]:
         """
         Try to refresh access token using cached refresh token.
         Returns new access token on success, None on failure.
@@ -92,9 +99,17 @@ class BaseAuth(Authentication, ABC):
         pass
 
     @abstractmethod
-    def get_new_access_token(self) -> str:
+    def get_new_access_token(self, trace_id: Optional[str] = None) -> str:
         """Obtain a new access token using the grant-specific flow."""
         ...
+
+    @staticmethod
+    def _token_request_headers(trace_id: Optional[str]) -> dict:
+        """Headers for a token endpoint request, tagged with the trace ID when one is known."""
+        headers = dict(OAUTH_TOKEN_ENDPOINT_HEADERS)
+        if trace_id:
+            headers[HTTPHeader.WD_REQUEST_ID] = trace_id
+        return headers
 
     @staticmethod
     def _set_auth_headers(http_session, token: str) -> None:
@@ -112,7 +127,9 @@ class BaseAuth(Authentication, ABC):
 
     def set_http_session(self, http_session) -> None:
         """Configure HTTP session with authentication headers and request interceptor."""
-        token = self.get_token()
+        # Initial token fetch is not tied to a query, so use a standalone trace ID.
+        trace_id = self._trace_tracker.new_trace_id() if self._trace_tracker else None
+        token = self.get_token(trace_id)
         self._set_auth_headers(http_session, token)
 
         original_request = http_session.request
@@ -122,7 +139,8 @@ class BaseAuth(Authentication, ABC):
             Intercept and modify requests:
             1. Rewrite host/port from config
             2. Prepend /dataservice gateway path prefix when absent
-            3. On 401: force-refresh token and retry once
+            3. Tag /v1/statement requests with the query's trace ID
+            4. On 401: force-refresh token and retry once
             """
             parsed = urlparse(url)
             netloc = f"{self.config.host}:{self.config.port}"
@@ -130,23 +148,40 @@ class BaseAuth(Authentication, ABC):
             path = parsed.path if has_gateway_prefix else LDQ_GATEWAY_PATH_PREFIX + parsed.path
             modified_url = urlunparse(parsed._replace(netloc=netloc, path=path))
 
-            response = original_request(method, modified_url, **kwargs)
-            if response.status_code == HTTPStatus.UNAUTHORIZED:
-                try:
-                    response.close()
-                except Exception:
-                    pass
-                with self._token_lock:
-                    # Clear cached token data on 401
-                    self._cached_token_data = self._cached_token_data._replace(access_token=None, expires_at=None)
+            trace_context = self._trace_tracker.track(method, modified_url) if self._trace_tracker else None
+            trace_id = trace_context.trace_id if trace_context else None
+            if trace_id:
+                kwargs[HTTP_HEADERS] = {
+                    **(kwargs.get(HTTP_HEADERS) or {}),
+                    HTTPHeader.TRINO_TRACE_TOKEN: trace_id,
+                    HTTPHeader.WD_REQUEST_ID: trace_id,
+                }
 
-                newly_acquired_token = self.get_token()
-                self._set_auth_headers(http_session, newly_acquired_token)
-                response = original_request(method, modified_url, **kwargs)
-
+            response = self._send_with_token_retry(http_session, original_request, method, modified_url,
+                                                   trace_id, kwargs)
+            if trace_context:
+                trace_context.on_response(response)
             return response
 
         http_session.request = intercepted_request
+
+    def _send_with_token_retry(self, http_session, original_request, method, modified_url, trace_id, kwargs):
+        """Send the request; on 401 force-refresh the token and retry once."""
+        response = original_request(method, modified_url, **kwargs)
+        if response.status_code == HTTPStatus.UNAUTHORIZED:
+            try:
+                response.close()
+            except Exception:
+                pass
+            with self._token_lock:
+                # Clear cached token data on 401
+                self._cached_token_data = self._cached_token_data._replace(access_token=None, expires_at=None)
+
+            newly_acquired_token = self.get_token(trace_id)
+            self._set_auth_headers(http_session, newly_acquired_token)
+            response = original_request(method, modified_url, **kwargs)
+
+        return response
 
     def _is_token_valid(self) -> bool:
         """Check if cached token is still valid (with 5-minute safety buffer)."""

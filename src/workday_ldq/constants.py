@@ -67,6 +67,8 @@ class HTTPHeader:
     CONTENT_TYPE = "Content-Type"
     TENANT = "X-Tenant"
     ACCEPT = "Accept"
+    TRINO_TRACE_TOKEN = "X-Trino-Trace-Token"
+    WD_REQUEST_ID = "x-wd-request-id"
 
 
 # ---------------------------------------------------------------------------
@@ -199,3 +201,14 @@ LDQ_GATEWAY_PATH_PREFIX = "/dataservice"
 HTTP_METHOD_POST = "POST"
 HTTPS_SCHEME = "https://"
 HTTP_SCHEME = "http://"
+HTTP_HEADERS = "headers"
+
+# ---------------------------------------------------------------------------
+# Trace ID Tracking
+# ---------------------------------------------------------------------------
+
+TRACE_ID_PREFIX = "LDQ|"
+TRACE_ID_MAX_PEEK_BYTES = 1024
+TRACE_ID_IDLE_TTL_SECONDS = 5400
+TRACE_ID_MAX_TRACKED_QUERIES = 10_000
+

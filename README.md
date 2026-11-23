@@ -37,7 +37,7 @@ OAuth endpoint URLs are shown on the API client registration page after registra
 
 ### 1. Configuration (`ldq.properties`)
 
-Auth model via `wd.authn.authModel` (case-insensitive): `JWT_BEARER` (default) or `AUTHORIZATION_CODE`.
+Auth model via `wd.authn.authModel` (case-insensitive): `JWT_BEARER` (default), `AUTHORIZATION_CODE`, `AUTHORIZATION_CODE_PKCE` or `ACCESS_TOKEN`.
 
 #### `JWT_BEARER`
 
@@ -61,6 +61,16 @@ wd.authn.clientId=YOUR_CLIENT_ID
 wd.authn.authorizationEndpoint=https://YOUR_TENANT.myworkday.com/ccx/oauth2/YOUR_TENANT/authorize
 wd.authn.redirectUrl=https://localhost:8888/callback
 wd.authn.clientSecret=YOUR_CLIENT_SECRET
+wd.host=YOUR_TENANT.myworkday.com
+```
+
+#### `ACCESS_TOKEN`
+
+Use a token you already hold (e.g. a Workday system identity token), without any token exchange. The token must be a JWT with `exp` and `tenant` claims. It is sent as `Authorization: Bearer <token>` and is never refreshed; when it expires, supply a new one and reconnect.
+
+```properties
+wd.authn.authModel=ACCESS_TOKEN
+wd.authn.accessToken=YOUR_TOKEN
 wd.host=YOUR_TENANT.myworkday.com
 ```
 
