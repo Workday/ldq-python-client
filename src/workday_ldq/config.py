@@ -51,7 +51,7 @@ def _parse_properties_file(path: Path) -> Dict[str, str]:
 # ---------------------------------------------------------------------------
 
 class LDQConfig:
-    """Configuration for LDQ connections (JWT_BEARER, AUTHORIZATION_CODE, AUTHORIZATION_CODE_PKCE)."""
+    """Configuration for LDQ connections (JWT_BEARER, AUTHORIZATION_CODE, AUTHORIZATION_CODE_PKCE, ACCESS_TOKEN)."""
 
     _properties: Dict[str, str]
     _auth_model: AuthModel
@@ -136,6 +136,16 @@ class LDQConfig:
         return self.get_float(DriverProperty.HTTP_REQUEST_TIMEOUT, DEFAULT_REQUEST_TIMEOUT)
 
     @property
+    def trace_id_enabled(self) -> bool:
+        """Whether requests of a query are tagged with a trace ID (default: True).
+
+        Only "false" (ignoring case and surrounding whitespace) disables it; any other value,
+        including blank or a typo, leaves it on.
+        """
+        value = self.get(DriverProperty.TRACE_ID_ENABLED)
+        return value is None or value.strip().lower() != "false"
+
+    @property
     def catalog(self) -> str:
         return self.get(DriverProperty.CATALOG) or "workday_core"
 
@@ -173,6 +183,10 @@ class LDQConfig:
     @property
     def client_secret(self) -> str:
         return self._require(DriverProperty.CLIENT_SECRET)
+
+    @property
+    def access_token(self) -> str:
+        return self._require(DriverProperty.ACCESS_TOKEN)
 
     @property
     def session_properties(self) -> Optional[Dict[str, str]]:

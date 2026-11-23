@@ -18,7 +18,6 @@ from .constants import (
     GrantType,
     TokenRequestParam,
     AuthzParam,
-    OAUTH_TOKEN_ENDPOINT_HEADERS,
     PKCE_CODE_VERIFIER_BYTE_LENGTH,
     PKCE_CODE_CHALLENGE_METHOD,
 )
@@ -53,10 +52,10 @@ class AuthCodeGrantPKCEAuth(AuthCodeGrantAuth):
         self._code_verifier: Optional[str] = None
         self._code_challenge: Optional[str] = None
 
-    def get_new_access_token(self) -> str:
+    def get_new_access_token(self, trace_id: Optional[str] = None) -> str:
         """Generate a fresh PKCE pair before the full Authorization Code flow."""
         self._code_verifier, self._code_challenge = _generate_pkce_pair()
-        return super().get_new_access_token()
+        return super().get_new_access_token(trace_id)
 
     def _build_authorization_url(self, state: str) -> str:
         base_url = super()._build_authorization_url(state)
@@ -73,7 +72,7 @@ class AuthCodeGrantPKCEAuth(AuthCodeGrantAuth):
         })
         return f"{base_url}&{pkce_params}"
 
-    def _exchange_code_for_token(self, code: str) -> str:
+    def _exchange_code_for_token(self, code: str, trace_id: Optional[str] = None) -> str:
         if self._code_verifier is None:
             raise RuntimeError(
                 "PKCE code_verifier is None. "
@@ -89,12 +88,12 @@ class AuthCodeGrantPKCEAuth(AuthCodeGrantAuth):
                 TokenRequestParam.CLIENT_ID: self.config.client_id,
                 TokenRequestParam.CODE_VERIFIER: self._code_verifier,
             },
-            headers=OAUTH_TOKEN_ENDPOINT_HEADERS,
+            headers=self._token_request_headers(trace_id),
             timeout=self.HTTP_REQUEST_TIMEOUT_SECONDS,
         )
         return self._handle_token_response(resp)
 
-    def try_refresh_token_grant(self) -> Optional[str]:
+    def try_refresh_token_grant(self, trace_id: Optional[str] = None) -> Optional[str]:
         """Refresh token grant for public clients — no client_secret."""
         if not self._cached_token_data.refresh_token:
             return None
@@ -107,7 +106,7 @@ class AuthCodeGrantPKCEAuth(AuthCodeGrantAuth):
                     TokenRequestParam.REFRESH_TOKEN: self._cached_token_data.refresh_token,
                     TokenRequestParam.CLIENT_ID: self.config.client_id,
                 },
-                headers=OAUTH_TOKEN_ENDPOINT_HEADERS,
+                headers=self._token_request_headers(trace_id),
                 timeout=self.HTTP_REQUEST_TIMEOUT_SECONDS,
             )
             return self._handle_token_response(resp)

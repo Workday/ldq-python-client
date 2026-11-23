@@ -591,7 +591,7 @@ class TestGetNewAccessToken:
             token = auth.get_new_access_token()
 
         assert token == access_token
-        mock_exchange.assert_called_once_with("sim-auth-code-abc")
+        mock_exchange.assert_called_once_with("sim-auth-code-abc", None)
         mock_server.shutdown.assert_called_once()
 
     def test_missing_port_in_redirect_url_raises(self):

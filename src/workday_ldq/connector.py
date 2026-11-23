@@ -19,7 +19,7 @@ def create_connection(config: CreateConnectionArg):
     """Create a Workday Live Data Query (LDQ) connection.
 
     The authentication flow is selected via ``wd.authn.authModel``
-    (``JWT_BEARER``, ``AUTHORIZATION_CODE``, or ``AUTHORIZATION_CODE_PKCE``).
+    (``JWT_BEARER``, ``AUTHORIZATION_CODE``, ``AUTHORIZATION_CODE_PKCE``, or ``ACCESS_TOKEN``).
 
     Args:
         config: Connection settings as one of:
